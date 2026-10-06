@@ -12,9 +12,11 @@ Addon minimap buttons are taken off the minimap and parked in a drawer behind a 
 button. Click that button and they fold out in a grid; click it again and they fold back
 in. The drawer stays open until you close it.
 
-- **One button instead of many.** Collects LibDBIcon buttons and most hand-made minimap
-  buttons (any named child of the minimap whose name looks like a minimap button).
-  Blizzard's own minimap controls are left alone.
+- **One button instead of many.** Takes every addon button on the minimap: LibDBIcon
+  buttons, buttons with the usual minimap-button names, and any other small clickable
+  button an addon hangs on the minimap, whatever it is called. Blizzard's own minimap
+  controls and map pins are left alone. Opening the drawer looks again, so a button
+  created late is picked up too.
 - **Buttons stay put.** When an addon tries to move its button back onto the minimap,
   Button Drawer puts it back in the drawer.
 - **Built-in Lua error button.** The first cell of the drawer is an error button: grey
@@ -59,7 +61,8 @@ in. The drawer stays open until you close it.
 
 - Protected and forbidden frames are never touched, so a button the game locks stays where
   it is.
-- A button with an unusual name may be missed; `/bd list` shows what was collected.
+- A button that is not attached to the minimap itself (one an addon parents somewhere
+  else and only places near it) is not seen. `/bd list` shows what was collected.
 
 
 ## Compatibility

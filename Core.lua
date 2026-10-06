@@ -27,21 +27,60 @@ local BLIZZARD = {
     "^TimeManager", "^Garrison", "^ButtonDrawer",
 }
 
-local function isAddonButton(frame)
+-- Things addons put on the minimap that are not launcher buttons: map pins and arrows.
+local PINS = { "Pin", "Questie", "GatherMate", "HandyNotes", "TomTom", "Node", "POI", "Blip", "Waypoint" }
+
+-- Blizzard builds its minimap pieces as fields of their parent (Minimap.ZoomIn, ...).
+local function isParentField(frame, parent)
+    for _, value in pairs(parent) do
+        if value == frame then return true end
+    end
+    return false
+end
+
+-- A button sitting on the minimap's rim rather than on the map itself.
+local function isOnRim(frame)
+    local x, y = frame:GetCenter()
+    local mx, my = Minimap:GetCenter()
+    if not (x and y and mx and my) then return false end
+    local scale = frame:GetEffectiveScale() / Minimap:GetEffectiveScale()
+    local dx, dy = x * scale - mx, y * scale - my
+    return math.sqrt(dx * dx + dy * dy) >= Minimap:GetWidth() / 2 * 0.75
+end
+
+local function isAddonButton(frame, parent)
     local ok, forbidden = pcall(frame.IsForbidden, frame)
     if not ok or forbidden then return false end
     local name = frame:GetName()
-    if type(name) ~= "string" or adopted[frame] or db.ignore[name] then return false end
+    if type(name) ~= "string" then name = nil end
+    if adopted[frame] or (name and db.ignore[name]) then return false end
     local kind = frame:GetObjectType()
     if kind ~= "Button" and kind ~= "Frame" then return false end
     -- Reparenting a protected frame is blocked in combat; such a button is left where it is.
     if frame:IsProtected() then return false end
-    if name:find("^LibDBIcon10_") then return true end
-    for _, pattern in ipairs(BLIZZARD) do
-        if name:find(pattern) then return false end
+    if name then
+        if name:find("^LibDBIcon10_") then return true end
+        for _, pattern in ipairs(BLIZZARD) do
+            if name:find(pattern) then return false end
+        end
+        if name:find("MinimapButton") or name:find("MiniMapButton") or name:find("MinimapIcon")
+            or name:find("Minimap$") then
+            return true
+        end
+        for _, pattern in ipairs(PINS) do
+            if name:find(pattern) then return false end
+        end
     end
-    return name:find("MinimapButton") or name:find("MiniMapButton") or name:find("MinimapIcon")
-        or name:find("Minimap$") or false
+    -- Everything else: any small clickable button an addon hung on the minimap, whatever it
+    -- is called. Blizzard's own pieces and map pins are kept out.
+    if kind ~= "Button" or isParentField(frame, parent) then return false end
+    if not (frame:GetScript("OnClick") or frame:GetScript("OnMouseUp") or frame:GetScript("OnMouseDown")) then
+        return false
+    end
+    local width, height = frame:GetSize()
+    if width < 12 or height < 12 or width > 48 or height > 48 then return false end
+    -- A button without a name cannot be told from a map pin by name, so it has to sit on the rim.
+    return name ~= nil or isOnRim(frame)
 end
 
 -- ------------------------------------------------------------------ layout
@@ -119,7 +158,7 @@ local function scan()
     for _, parent in ipairs({ Minimap, MinimapBackdrop, MinimapCluster }) do
         if parent then
             for _, child in ipairs({ parent:GetChildren() }) do
-                if child ~= main and isAddonButton(child) then
+                if child ~= main and isAddonButton(child, parent) then
                     adopt(child)
                     found = found + 1
                 end
@@ -127,6 +166,12 @@ local function scan()
         end
     end
     if found > 0 then queueLayout() end
+end
+
+-- Opening the drawer looks for buttons first, so one created late is never left outside.
+local function toggleDrawer()
+    if not drawer:IsShown() then scan() end
+    drawer:SetShown(not drawer:IsShown())
 end
 
 -- ------------------------------------------------------------------ the pieces
@@ -193,7 +238,7 @@ local function build()
     main:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     main:RegisterForDrag("LeftButton")
     main:SetScript("OnClick", function(_, mouse)
-        if mouse == "RightButton" then ns.ToggleErrorWindow() else drawer:SetShown(not drawer:IsShown()) end
+        if mouse == "RightButton" then ns.ToggleErrorWindow() else toggleDrawer() end
     end)
     main:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function()
@@ -268,7 +313,7 @@ SlashCmdList.BUTTONDRAWER = function(msg)
         layout()
         print("|cffffcc66Button Drawer|r: " .. arg .. " stays on the minimap.")
     elseif cmd == "list" then
-        for _, f in ipairs(shownButtons()) do print("|cffffcc66Button Drawer|r: " .. f:GetName()) end
+        for _, f in ipairs(shownButtons()) do print("|cffffcc66Button Drawer|r: " .. (f:GetName() or "(unnamed button)")) end
     elseif cmd == "reset" then
         db.angle, db.columns = defaults.angle, defaults.columns
         wipe(db.ignore)
@@ -278,6 +323,6 @@ SlashCmdList.BUTTONDRAWER = function(msg)
     elseif cmd == "errors" then
         ns.ToggleErrorWindow()
     else
-        drawer:SetShown(not drawer:IsShown())
+        toggleDrawer()
     end
 end
