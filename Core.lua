@@ -1,7 +1,7 @@
 -- Button Drawer - one minimap button that holds every addon's minimap button.
 --
 -- Addon minimap buttons are taken off the minimap and parked in a drawer. Clicking the
--- drawer button folds them out in a grid; they fold back in when the mouse leaves.
+-- drawer button folds them out in a grid; clicking it again folds them back in.
 -- The first cell of the drawer is the Lua error button (Errors.lua).
 --
 --   left-click   open or close the drawer          drag   move around the minimap
@@ -216,17 +216,8 @@ local function build()
     drawer.bg = drawer:CreateTexture(nil, "BACKGROUND")
     drawer.bg:SetAllPoints()
     drawer.bg:SetColorTexture(0.05, 0.05, 0.06, 0.9)
+    -- A plain toggle: the drawer stays open until its button is clicked again.
     drawer:Hide()
-    -- fold back in a moment after the mouse has left both the drawer and its button
-    local away = 0
-    drawer:SetScript("OnUpdate", function(self, elapsed)
-        if self:IsMouseOver() or main:IsMouseOver() then
-            away = 0
-        else
-            away = away + elapsed
-            if away > 1.2 then away = 0 self:Hide() end
-        end
-    end)
 
     errorButton = square(drawer, 28, 0.35, 0.35, 0.38)
     errorButton.label = errorButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")

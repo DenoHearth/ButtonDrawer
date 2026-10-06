@@ -9,8 +9,8 @@ A World of Warcraft: Forever addon (interface 16001).
 ## What it does
 
 Addon minimap buttons are taken off the minimap and parked in a drawer behind a single
-button. Click that button and they fold out in a grid; they fold back in shortly after the
-mouse leaves.
+button. Click that button and they fold out in a grid; click it again and they fold back
+in. The drawer stays open until you close it.
 
 - **One button instead of many.** Collects LibDBIcon buttons and most hand-made minimap
   buttons (any named child of the minimap whose name looks like a minimap button).
