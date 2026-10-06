@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Button Drawer
+## Notes: One minimap button that holds every addon's minimap button and folds them out on click. Includes a Lua error button.
+## Author: Deniz
+## Version: 1.0.0
+## Category: Interface
+## SavedVariables: ButtonDrawerDB
+
+Errors.lua
+Core.lua
