@@ -24,6 +24,9 @@ in. The drawer stays open until you close it.
   badge on the drawer button. Errors are deduplicated and kept in a window with copyable
   text (Select all / Clear / Close). It replaces the default error popup.
 - **Movable.** Drag the drawer button around the minimap; the position is saved.
+- **Manage window.** The Set cell in the drawer (or `/bd config`) lists every button with On,
+  Up and Down, and sets icon size, columns and opening on mouse-over. No dragging needed.
+- **Opens the right way.** The drawer folds out away from the nearest screen edges.
 - **Standalone.** No libraries, no dependencies.
 
 ## Install
@@ -76,4 +79,4 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).  Current version: 1.0.0.
+MIT — see [LICENSE](LICENSE).  Current version: 1.1.0.

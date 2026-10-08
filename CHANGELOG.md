@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0 — 2026-10-08
+
+- Manage window (the Set cell in the drawer, or /bd config): every button with On, Up and Down, icon size, columns, open on mouse-over; the drawer opens away from the screen edges; its button turns red while there are Lua errors
+
 ## v1.0.2 — 2026-10-06
 
 - Collects every addon button on the minimap, not only ones with typical minimap-button names; opening the drawer rescans for late buttons.
