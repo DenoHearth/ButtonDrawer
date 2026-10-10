@@ -65,9 +65,14 @@ local function isAddonButton(frame, parent)
         for _, pattern in ipairs(BLIZZARD) do
             if name:find(pattern) then return false end
         end
-        if name:find("MinimapButton") or name:find("MiniMapButton") or name:find("MinimapIcon")
-            or name:find("Minimap$") then
+        if name:find("MinimapButton") or name:find("MiniMapButton") or name:find("MinimapIcon") then
             return true
+        end
+        -- "...Minimap" is a button name for some addons and a whole minimap for others
+        -- (Deno Map's own map frame): only something button-sized counts.
+        if name:find("Minimap$") then
+            local width, height = frame:GetSize()
+            return width >= 12 and height >= 12 and width <= 48 and height <= 48
         end
         for _, pattern in ipairs(PINS) do
             if name:find(pattern) then return false end
@@ -86,6 +91,22 @@ local function isAddonButton(frame, parent)
 end
 
 -- ------------------------------------------------------------------ layout
+
+-- Addons fade their minimap button out until the mouse is over the minimap (LibDBIcon's
+-- show on enter, fade on leave), and some dim it themselves. In the drawer a button is
+-- there to be seen and pressed: fades are stopped and it stays at full strength.
+local function fullAlpha(frame)
+    -- Stop even a group that has finished: one that ended with "keep the final alpha" goes on
+    -- holding the button down until it is stopped, whatever SetAlpha says.
+    for _, group in ipairs({ frame:GetAnimationGroups() }) do group:Stop() end
+    -- LibDBIcon's own switch for "only visible while the mouse is on the minimap" (Leatrix Plus
+    -- turns it on for every button with "Hide addon buttons"). Off while the button is ours.
+    if frame.showOnMouseover then
+        adopted[frame].showOnMouseover = true
+        frame.showOnMouseover = false
+    end
+    frame:SetAlpha(1)
+end
 
 -- The place of a button in the drawer: the order set in the manage window, then by name.
 local function orderOf(name)
@@ -143,6 +164,18 @@ local function layout()
         -- a collected button keeps its own size and is scaled; the offsets are in its own scale
         local saved = adopted[frame]
         local own = saved and saved.scale * factor or factor
+        if saved then
+            fullAlpha(frame)
+            -- A library button keeps its own strata and level (fixed, MEDIUM); left there it is
+            -- drawn underneath the drawer's dark panel and looks greyed out. Lift it onto the panel.
+            -- (LibDBIcon locks both with SetFixedFrameStrata/Level; a locked frame ignores the set.)
+            if frame.SetFixedFrameStrata then
+                frame:SetFixedFrameStrata(false)
+                frame:SetFixedFrameLevel(false)
+            end
+            frame:SetFrameStrata(drawer:GetFrameStrata())
+            frame:SetFrameLevel(drawer:GetFrameLevel() + 5)
+        end
         frame:SetScale(own)
         frame:ClearAllPoints()
         frame:SetPoint("CENTER", drawer, "TOPLEFT",
@@ -168,6 +201,9 @@ local function adopt(frame)
     local points = {}
     for i = 1, frame:GetNumPoints() do points[i] = { frame:GetPoint(i) } end
     adopted[frame] = { parent = frame:GetParent(), points = points, scale = frame:GetScale(),
+                       strata = frame:GetFrameStrata(), level = frame:GetFrameLevel(),
+                       -- the lock cannot be asked for on every client; library buttons always have it
+                       fixed = (frame:GetName() or ""):find("^LibDBIcon10_") ~= nil and frame.fadeOut ~= nil,
                        dragStart = frame:GetScript("OnDragStart"),
                        dragStop = frame:GetScript("OnDragStop") }
     -- inside the drawer a button has a fixed cell; dragging it around the minimap makes no sense
@@ -179,6 +215,15 @@ local function adopt(frame)
     hooksecurefunc(frame, "SetParent", function() if not laying and adopted[frame] then queueLayout() end end)
     frame:HookScript("OnShow", queueLayout)
     frame:HookScript("OnHide", queueLayout)
+    hooksecurefunc(frame, "SetAlpha", function(self, alpha)
+        if adopted[self] and alpha < 1 then self:SetAlpha(1) end
+    end)
+    for _, group in ipairs({ frame:GetAnimationGroups() }) do
+        hooksecurefunc(group, "Play", function(self)
+            if adopted[frame] then self:Stop() frame:SetAlpha(1) end
+        end)
+    end
+    fullAlpha(frame)
 end
 
 local function release(frame)
@@ -187,6 +232,13 @@ local function release(frame)
     adopted[frame] = nil
     laying = true
     frame:SetParent(saved.parent)
+    if saved.showOnMouseover then frame.showOnMouseover = true end
+    frame:SetFrameStrata(saved.strata)
+    frame:SetFrameLevel(saved.level)
+    if saved.fixed and frame.SetFixedFrameStrata then
+        frame:SetFixedFrameStrata(true)
+        frame:SetFixedFrameLevel(true)
+    end
     frame:SetScale(saved.scale)
     frame:ClearAllPoints()
     for _, p in ipairs(saved.points) do frame:SetPoint(unpack(p)) end

@@ -147,9 +147,15 @@ local function build()
         b:SetScript("OnClick", onClick)
         return b
     end
-    button("Select all", 10, function() edit:SetFocus() edit:HighlightText() end)
-    button("Clear", 130, function() ns.ClearErrors() end)
-    button("Close", 250, function() f:Hide() end)
+    -- Copy puts the whole report on the clipboard; Select all is there for Ctrl+C by hand.
+    f.copy = button("Copy", 10, function()
+        local ok, length = pcall(CopyToClipboard, report())
+        f.title:SetText(ok and length and "Copied to the clipboard." or "Could not copy - use Select all, then Ctrl+C.")
+        C_Timer.After(2, function() if f:IsShown() then f:Refresh() end end)
+    end)
+    button("Select all", 130, function() edit:SetFocus() edit:HighlightText() end)
+    button("Clear", 250, function() ns.ClearErrors() end)
+    button("Close", 370, function() f:Hide() end)
 
     function f:Refresh()
         self.title:SetText("Lua errors: " .. ns.ErrorCount() .. " (" .. #ns.errors .. " different)")

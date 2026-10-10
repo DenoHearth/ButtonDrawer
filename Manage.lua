@@ -7,6 +7,7 @@ local ADDON, ns = ...
 
 local ROWS, ROW_HEIGHT = 8, 30
 local WIDTH, PAD = 440, 12
+local BAR = 12                 -- the scroll bar beside the list
 local LIST_TOP = 70
 
 -- One flat look: a grey window, darker rows, thin outlines, blue for what is switched on.
@@ -20,7 +21,7 @@ local C = {
 
 local window, rows = nil, {}
 local offset = 0
-local countText, sizeText, columnsText, hoverSwitch, keepSwitch, upPage, downPage
+local countText, sizeText, columnsText, hoverSwitch, keepSwitch, upPage, downPage, scrollBar
 
 local function Fill(parent, color, layer)
     local texture = parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -170,7 +171,7 @@ end
 
 local function CreateRow(index)
     local row = CreateFrame("Frame", nil, window)
-    row:SetSize(WIDTH - 2 * PAD, ROW_HEIGHT - 2)
+    row:SetSize(WIDTH - 2 * PAD - BAR - 4, ROW_HEIGHT - 2)
     row:SetPoint("TOPLEFT", PAD, -LIST_TOP - (index - 1) * ROW_HEIGHT)
     row:EnableMouse(true)
     Fill(row, index % 2 == 1 and C.rowA or C.rowB)
@@ -244,6 +245,13 @@ function ns.RefreshManage()
     downPage:SetUsable(offset < maxOffset)
     upPage:SetShown(maxOffset > 0)
     downPage:SetShown(maxOffset > 0)
+    -- the bar is always there; with nothing to scroll its handle is dim and does not move
+    scrollBar.setting = true
+    scrollBar:SetMinMaxValues(0, maxOffset)
+    scrollBar:SetValue(offset)
+    scrollBar.setting = false
+    scrollBar:SetEnabled(maxOffset > 0)
+    scrollBar.thumb:SetAlpha(maxOffset > 0 and 1 or 0.35)
     sizeText:SetText(tostring(db.size))
     columnsText:SetText(tostring(db.columns))
     hoverSwitch:Set(db.hover)
@@ -282,7 +290,27 @@ local function CreateWindow()
     window.empty = Text(window, "No addon minimap buttons found yet.", "GameFontHighlight", C.dim)
     window.empty:SetPoint("TOP", 0, -LIST_TOP - 40)
 
-    -- the list scrolls with two buttons (and the mouse wheel)
+    -- the list scrolls with the bar beside it, two buttons, and the mouse wheel
+    scrollBar = CreateFrame("Slider", nil, window)
+    scrollBar:SetOrientation("VERTICAL")
+    scrollBar:SetSize(BAR, ROWS * ROW_HEIGHT - 2)
+    scrollBar:SetPoint("TOPRIGHT", -PAD, -LIST_TOP)
+    Fill(scrollBar, C.input)
+    Outline(scrollBar, C.edge)
+    scrollBar.thumb = scrollBar:CreateTexture(nil, "ARTWORK")
+    scrollBar.thumb:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 1)
+    scrollBar.thumb:SetSize(BAR - 4, 44)
+    scrollBar:SetThumbTexture(scrollBar.thumb)
+    scrollBar:SetValueStep(1)
+    scrollBar:SetObeyStepOnDrag(true)
+    scrollBar:SetMinMaxValues(0, 0)
+    scrollBar:SetValue(0)
+    scrollBar:SetScript("OnValueChanged", function(self, value)
+        if self.setting then return end
+        offset = math.floor(value + 0.5)
+        ns.RefreshManage()
+    end)
+    Tooltip(scrollBar, "Scroll the list")
     countText = Text(window, "", "GameFontHighlightSmall", C.dim)
     countText:SetPoint("TOPLEFT", PAD, -listBottom - 6)
     downPage = Flat(window, "Scroll down", 84, function()
