@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2 — 2026-10-11
+
+- On a square minimap (any addon that reports the minimap's shape) the drawer button sits outside the square instead of inside its corner
+
 ## v1.1.1 — 2026-10-10
 
 - Icons in the drawer are fully lit: buttons made with LibDBIcon were drawn underneath the drawer's panel and looked greyed out, and addons that fade minimap buttons until the mouse is on the minimap (Leatrix Plus "Hide addon buttons") no longer fade them in the drawer

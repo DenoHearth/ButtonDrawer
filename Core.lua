@@ -361,8 +361,15 @@ end
 local function placeMain()
     local radius = Minimap:GetWidth() / 2 + 8
     local a = math.rad(db.angle)
+    local x, y = math.cos(a), math.sin(a)
+    -- On a square minimap (an addon that made it square says so through GetMinimapShape) the
+    -- button goes outside the square: along the same direction, out to the edge and past it.
+    local shape = _G.GetMinimapShape
+    if shape and shape() == "SQUARE" then
+        radius = (Minimap:GetWidth() / 2 + main:GetWidth() / 2 + 4) / math.max(math.abs(x), math.abs(y))
+    end
     main:ClearAllPoints()
-    main:SetPoint("CENTER", Minimap, "CENTER", math.cos(a) * radius, math.sin(a) * radius)
+    main:SetPoint("CENTER", Minimap, "CENTER", x * radius, y * radius)
 end
 
 local function refreshErrors()
