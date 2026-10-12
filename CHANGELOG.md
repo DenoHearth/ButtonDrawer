@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0 — 2026-10-12
+
+- The error window shows one Lua error at a time, newest first, with **Previous** and **Next** buttons to go through them; the title says which one you are on and how often it happened. A new error arriving does not move you off the one you are reading
+- The Copy button made the game report "ButtonDrawer was forbidden from calling UNKNOWN()" at every press: the game keeps the clipboard for its own UI. It is now **Mark**: it marks the error shown, and Ctrl+C copies it
+
 ## v1.1.2 — 2026-10-11
 
 - On a square minimap (any addon that reports the minimap's shape) the drawer button sits outside the square instead of inside its corner

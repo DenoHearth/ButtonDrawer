@@ -91,15 +91,18 @@ end)
 
 local window
 
+-- One error at a time, newest first: page 1 is the newest. (Until 1.1.2 the window held all
+-- of them in one long text; he asked for them apart, with buttons to go through them.)
+local page = 1
+
+local function shown()
+    return ns.errors[#ns.errors - page + 1]
+end
+
 local function report()
-    if #ns.errors == 0 then return "No Lua errors this session." end
-    local out = {}
-    for i = #ns.errors, 1, -1 do           -- newest first
-        local e = ns.errors[i]
-        out[#out + 1] = string.format("[%s] x%d  (%s, last %s)\n%s\n%s",
-            e.kind, e.count, e.first, e.last, e.msg, e.stack)
-    end
-    return table.concat(out, "\n----------------------------------------\n")
+    local e = shown()
+    if not e then return "No Lua errors this session." end
+    return string.format("[%s] x%d  (%s, last %s)\n%s\n%s", e.kind, e.count, e.first, e.last, e.msg, e.stack)
 end
 
 local function build()
@@ -147,21 +150,44 @@ local function build()
         b:SetScript("OnClick", onClick)
         return b
     end
-    -- Copy puts the whole report on the clipboard; Select all is there for Ctrl+C by hand.
-    f.copy = button("Copy", 10, function()
-        local ok, length = pcall(CopyToClipboard, report())
-        f.title:SetText(ok and length and "Copied to the clipboard." or "Could not copy - use Select all, then Ctrl+C.")
-        C_Timer.After(2, function() if f:IsShown() then f:Refresh() end end)
+    -- The game keeps the clipboard for its own UI: an addon calling CopyToClipboard gets a
+    -- "forbidden" report each time (seen on the live beta, 2026-10-12; pcall does not stop it).
+    -- So the button marks the whole report and the copy itself is Ctrl+C.
+    f.previous = button("Previous", 10, function() page = page - 1 f:Refresh() end)
+    f.next = button("Next", 130, function() page = page + 1 f:Refresh() end)
+    f.copy = button("Mark", 250, function()
+        edit:SetFocus()
+        edit:HighlightText()
+        f.title:SetText("Marked - now press Ctrl+C.")
+        C_Timer.After(4, function() if f:IsShown() then f:Refresh() end end)
     end)
-    button("Select all", 130, function() edit:SetFocus() edit:HighlightText() end)
-    button("Clear", 250, function() ns.ClearErrors() end)
-    button("Close", 370, function() f:Hide() end)
+    button("Clear", 370, function() ns.ClearErrors() end)
+    button("Close", 490, function() f:Hide() end)
 
     function f:Refresh()
-        self.title:SetText("Lua errors: " .. ns.ErrorCount() .. " (" .. #ns.errors .. " different)")
+        local count = #ns.errors
+        page = math.max(1, math.min(page, math.max(count, 1)))
+        local e = shown()
+        if e then
+            self.title:SetText(string.format("Lua error %d of %d   -   this one happened %d time%s", page, count, e.count, e.count == 1 and "" or "s"))
+        else
+            self.title:SetText("Lua errors: none")
+        end
+        self.previous:SetEnabled(page > 1)
+        self.next:SetEnabled(page < count)
+        self.copy:SetEnabled(e ~= nil)
         self.edit:SetText(report())
+        self.edit:SetCursorPosition(0)
+        self.edit:ClearFocus()
     end
-    ns.OnErrorsChanged(function() if f:IsShown() then f:Refresh() end end)
+    -- a new error goes to the front: stay on the one being read
+    local seen = #ns.errors
+    ns.OnErrorsChanged(function()
+        if #ns.errors > seen and f:IsShown() then page = page + (#ns.errors - seen) end
+        if #ns.errors == 0 then page = 1 end
+        seen = #ns.errors
+        if f:IsShown() then f:Refresh() end
+    end)
     f:Hide()
     return f
 end
@@ -171,6 +197,7 @@ function ns.ToggleErrorWindow()
     if window:IsShown() then
         window:Hide()
     else
+        page = 1                    -- opens on the newest
         window:Refresh()
         window:Show()
     end
