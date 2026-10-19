@@ -21,8 +21,9 @@ in. The drawer stays open until you close it.
   Button Drawer puts it back in the drawer.
 - **Built-in Lua error button.** The first cell of the drawer is an error button: grey
   when there are no errors, red with a count when there are. The count also shows as a
-  badge on the drawer button. Errors are deduplicated and kept in a window with copyable
-  text (Select all / Clear / Close). It replaces the default error popup.
+  badge on the drawer button. Errors are deduplicated and kept in a window, one at a time
+  (Previous / Next), with Mark (this one) and Mark All (every error) for one Ctrl+C, Clear and
+  Close. Errors survive a /reload. It replaces the default error popup.
 - **Movable.** Drag the drawer button around the minimap; the position is saved.
 - **Manage window.** The Set cell in the drawer (or `/bd config`) lists every button with On,
   Up and Down, and sets icon size, columns and opening on mouse-over. No dragging needed.

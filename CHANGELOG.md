@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.2 — 2026-10-19
+
+- New **Mark All** button in the error window: every error at once, newest first, marked so one Ctrl+C copies them all. It stays marked until you press another button
+- Lua errors survive a /reload: the errors from before the reload come back in the window (a fresh login still starts empty)
+
 ## v1.2.0 — 2026-10-12
 
 - The error window shows one Lua error at a time, newest first, with **Previous** and **Next** buttons to go through them; the title says which one you are on and how often it happened. A new error arriving does not move you off the one you are reading

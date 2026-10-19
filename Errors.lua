@@ -64,13 +64,46 @@ end)
 
 local watcher = CreateFrame("Frame")
 watcher:RegisterEvent("ADDON_LOADED")
+watcher:RegisterEvent("PLAYER_ENTERING_WORLD")
 watcher:RegisterEvent("PLAYER_LOGOUT")
 watcher:RegisterEvent("ADDON_ACTION_BLOCKED")
 watcher:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 watcher:RegisterEvent("LUA_WARNING")
 watcher:SetScript("OnEvent", function(_, event, a, b)
     if event == "ADDON_LOADED" then
-        if a == ADDON then ButtonDrawerDB = ButtonDrawerDB or {} end
+        if a ~= ADDON then return end
+        ButtonDrawerDB = ButtonDrawerDB or {}
+        -- The errors from before a /reload come back (his ask, 2026-10-18: "let my lua errors
+        -- survive /reload"). They go in front of anything caught while the addons loaded.
+        local restored = {}
+        for _, e in ipairs(type(ButtonDrawerDB.errors) == "table" and ButtonDrawerDB.errors or {}) do
+            if type(e) == "table" and type(e.msg) == "string" then
+                e.restored = true
+                restored[#restored + 1] = e
+            end
+        end
+        for _, e in ipairs(ns.errors) do
+            local known
+            for _, r in ipairs(restored) do
+                if r.msg == e.msg then known = r break end
+            end
+            if known then
+                known.count, known.last, known.restored = (known.count or 1) + e.count, e.last, nil
+            else
+                restored[#restored + 1] = e
+            end
+        end
+        ns.errors = restored
+        changed()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- a fresh login starts empty; only a /reload keeps the old ones
+        if a and not b then
+            for i = #ns.errors, 1, -1 do
+                if ns.errors[i].restored then table.remove(ns.errors, i) end
+            end
+            changed()
+        end
+        watcher:UnregisterEvent("PLAYER_ENTERING_WORLD")
     elseif event == "PLAYER_LOGOUT" then
         -- kept on disk so the errors of a session can be read after the game is closed
         local saved = {}
@@ -99,10 +132,22 @@ local function shown()
     return ns.errors[#ns.errors - page + 1]
 end
 
+local function format(e)
+    return string.format("[%s] x%d  (%s, last %s)\n%s\n%s", e.kind, e.count, e.first, e.last, e.msg, e.stack)
+end
+
 local function report()
     local e = shown()
-    if not e then return "No Lua errors this session." end
-    return string.format("[%s] x%d  (%s, last %s)\n%s\n%s", e.kind, e.count, e.first, e.last, e.msg, e.stack)
+    if not e then return "No Lua errors since you logged in." end
+    return format(e)
+end
+
+-- Every page in one text, newest first, for one copy (his ask, 2026-10-19: "copy all Lua pages
+-- so I can copy paste all of them to you faster").
+local function reportAll()
+    local parts = {}
+    for i = #ns.errors, 1, -1 do parts[#parts + 1] = format(ns.errors[i]) end
+    return table.concat(parts, "\n\n")
 end
 
 local function build()
@@ -144,7 +189,7 @@ local function build()
 
     local function button(label, x, onClick)
         local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-        b:SetSize(110, 22)
+        b:SetSize(95, 22)
         b:SetPoint("BOTTOMLEFT", x, 10)
         b:SetText(label)
         b:SetScript("OnClick", onClick)
@@ -154,15 +199,22 @@ local function build()
     -- "forbidden" report each time (seen on the live beta, 2026-10-12; pcall does not stop it).
     -- So the button marks the whole report and the copy itself is Ctrl+C.
     f.previous = button("Previous", 10, function() page = page - 1 f:Refresh() end)
-    f.next = button("Next", 130, function() page = page + 1 f:Refresh() end)
-    f.copy = button("Mark", 250, function()
+    f.next = button("Next", 110, function() page = page + 1 f:Refresh() end)
+    f.copy = button("Mark", 210, function()
         edit:SetFocus()
         edit:HighlightText()
         f.title:SetText("Marked - now press Ctrl+C.")
         C_Timer.After(4, function() if f:IsShown() then f:Refresh() end end)
     end)
-    button("Clear", 370, function() ns.ClearErrors() end)
-    button("Close", 490, function() f:Hide() end)
+    -- all pages at once; stays marked until another button is pressed
+    f.copyAll = button("Mark All", 310, function()
+        edit:SetText(reportAll())
+        edit:SetFocus()
+        edit:HighlightText()
+        f.title:SetText(string.format("All %d errors marked - now press Ctrl+C.", #ns.errors))
+    end)
+    button("Clear", 410, function() ns.ClearErrors() end)
+    button("Close", 510, function() f:Hide() end)
 
     function f:Refresh()
         local count = #ns.errors
@@ -176,6 +228,7 @@ local function build()
         self.previous:SetEnabled(page > 1)
         self.next:SetEnabled(page < count)
         self.copy:SetEnabled(e ~= nil)
+        self.copyAll:SetEnabled(e ~= nil)
         self.edit:SetText(report())
         self.edit:SetCursorPosition(0)
         self.edit:ClearFocus()
