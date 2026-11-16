@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.5 — 2026-11-08
+
+- Dragging the minimap button: the button (and the drawer with it) no longer keeps following the mouse after you let go; the drag now stops as soon as the mouse button is up or the button is hidden
+- A temporary minimap recorder from 1.2.4 is gone again, and its saved log is cleared at login
+
 ## v1.2.2 — 2026-10-19
 
 - New **Mark All** button in the error window: every error at once, newest first, marked so one Ctrl+C copies them all. It stays marked until you press another button

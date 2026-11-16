@@ -408,6 +408,12 @@ local function build()
     end)
     main:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function()
+            -- OnDragStop does not always come (button let go over another frame, alt-tab):
+            -- without this the button kept following the mouse around the minimap (1.2.3)
+            if not IsMouseButtonDown("LeftButton") then
+                self:SetScript("OnUpdate", nil)
+                return
+            end
             local mx, my = Minimap:GetCenter()
             local px, py = GetCursorPosition()
             local scale = Minimap:GetEffectiveScale()
@@ -416,6 +422,7 @@ local function build()
         end)
     end)
     main:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+    main:HookScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
     tooltip(main, "Button Drawer", "Left-click: open the drawer", "Right-click: Lua errors",
             "Drag: move around the minimap", "Settings: the Set button in the drawer")
     -- optional: the drawer opens when the mouse comes onto the button

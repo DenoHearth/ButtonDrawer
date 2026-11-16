@@ -73,6 +73,7 @@ watcher:SetScript("OnEvent", function(_, event, a, b)
     if event == "ADDON_LOADED" then
         if a ~= ADDON then return end
         ButtonDrawerDB = ButtonDrawerDB or {}
+        ButtonDrawerDB.minimapWatch = nil   -- (1.2.4's minimap recorder log; the recorder is gone)
         -- The errors from before a /reload come back (his ask, 2026-10-18: "let my lua errors
         -- survive /reload"). They go in front of anything caught while the addons loaded.
         local restored = {}
