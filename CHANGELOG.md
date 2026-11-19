@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.6 — 2026-11-20
+
+- Goldwright's button goes into the drawer: Goldwright keeps its minimap button hidden by default (it lives in the game's add-on menu), so Button Drawer switches that button on at login and collects it
+
 ## v1.2.5 — 2026-11-08
 
 - Dragging the minimap button: the button (and the drawer with it) no longer keeps following the mouse after you let go; the drag now stops as soon as the mouse button is up or the button is hidden

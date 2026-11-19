@@ -247,8 +247,31 @@ local function release(frame)
     laying = false
 end
 
+-- Addons that keep their minimap button hidden by default (they sit in the game's add-on menu
+-- instead). Button Drawer switches their own "minimap button" setting on once per session, so
+-- the button exists and can be collected. Runs from the scans after login, when the addon's own
+-- login code has already made (or skipped) its button; a second create would make a duplicate.
+local WAKE = {
+    { global = "Goldwright", button = "GoldwrightMinimapButton", show = "SetMinimapShown" },
+}
+local woken = false
+
+local function wakeHiddenButtons()
+    if woken then return end
+    woken = true
+    for _, entry in ipairs(WAKE) do
+        local addon = _G[entry.global]
+        local button = _G[entry.button]
+        if type(addon) == "table" and type(addon[entry.show]) == "function"
+            and not (button and button:IsShown()) then
+            pcall(addon[entry.show], true)
+        end
+    end
+end
+
 local function scan()
     if not drawer then return end
+    wakeHiddenButtons()
     local found = 0
     for _, parent in ipairs({ Minimap, MinimapBackdrop, MinimapCluster }) do
         if parent then
