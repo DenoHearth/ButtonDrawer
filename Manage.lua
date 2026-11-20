@@ -244,11 +244,11 @@ local function CreateRow(index)
 
     row.name = Text(row, "", "GameFontHighlight")
     row.name:SetPoint("LEFT", 86, 0)
-    row.name:SetWidth(150)
+    row.name:SetWidth(138)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.note = Text(row, "", "GameFontHighlightSmall", C.dim)
-    row.note:SetPoint("LEFT", 240, 0)
+    row.note:SetPoint("LEFT", 228, 0)
 
     row.down = Flat(row, "Down", 44, function()
         if row.entry then ns.MoveButton(row.entry.name, 1) end

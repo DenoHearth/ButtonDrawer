@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.1 — 2026-11-20
+
+- Set window: the "stays on the minimap" note no longer runs into the Macro button
+
 ## v1.3.0 — 2026-11-20
 
 - Macros for your action bars: every addon in the **Set** window has a **Macro** button. It makes a macro that clicks that addon's minimap button (`/click <button>`, with the addon's own icon) and puts it on your mouse; one click on an action bar slot puts it there. Pressing it opens the addon's window like a click on its minimap button
