@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.0 — 2026-11-20
+
+- Macros for your action bars: every addon in the **Set** window has a **Macro** button. It makes a macro that clicks that addon's minimap button (`/click <button>`, with the addon's own icon) and puts it on your mouse; one click on an action bar slot puts it there. Pressing it opens the addon's window like a click on its minimap button
+- Two more buttons in the Set window make macros for Button Drawer's own Lua error window and Set window
+- Macros are account-wide (character macros when the account list is full); pressing Macro again updates the same macro instead of making a second one. Not possible in combat
+
 ## v1.2.6 — 2026-11-20
 
 - Goldwright's button goes into the drawer: Goldwright keeps its minimap button hidden by default (it lives in the game's add-on menu), so Button Drawer switches that button on at login and collects it

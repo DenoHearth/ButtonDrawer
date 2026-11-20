@@ -6,7 +6,7 @@
 local ADDON, ns = ...
 
 local ROWS, ROW_HEIGHT = 8, 30
-local WIDTH, PAD = 440, 12
+local WIDTH, PAD = 520, 12
 local BAR = 12                 -- the scroll bar beside the list
 local LIST_TOP = 70
 
@@ -21,6 +21,7 @@ local C = {
 
 local window, rows = nil, {}
 local offset = 0
+local macroNote
 local countText, sizeText, columnsText, hoverSwitch, keepSwitch, upPage, downPage, scrollBar
 
 local function Fill(parent, color, layer)
@@ -169,6 +170,58 @@ local function IconOf(frame)
     end
 end
 
+-- ------------------------------------------------------------------ macros
+-- A macro that does what a click on a button would do, so an addon's window can be opened
+-- from an action bar like a spell. The macro is made (or brought up to date) and put on the
+-- cursor; one click on an action bar slot puts it there.
+
+local MACRO_NAME_MAX = 16          -- the game cuts longer macro names
+local QUESTION_MARK = 134400       -- INV_Misc_QuestionMark
+
+local function Say(text, r, g, b)
+    if macroNote then
+        macroNote:SetText(text)
+        macroNote:SetTextColor(r or C.text[1], g or C.text[2], b or C.text[3])
+    end
+    print("|cff84ccffButton Drawer:|r " .. text)
+end
+
+-- name: macro name; icon: a file id or nil; body: the macro text.
+local function MakeMacro(name, icon, body)
+    if InCombatLockdown() then
+        Say("Macros cannot be made in combat. Try again after the fight.", 1, 0.4, 0.4)
+        return
+    end
+    name = string.sub(name, 1, MACRO_NAME_MAX)
+    if type(icon) ~= "number" then icon = QUESTION_MARK end
+    local index = GetMacroIndexByName(name)
+    local made
+    if index and index > 0 then
+        EditMacro(index, name, icon, body)
+    else
+        local account, character = GetNumMacros()
+        local consts = Constants and Constants.MacroConsts
+        local accountMax = consts and consts.MAX_ACCOUNT_MACROS or 120
+        local characterMax = consts and consts.MAX_CHARACTER_MACROS or 30
+        if (account or 0) < accountMax then
+            index = CreateMacro(name, icon, body, false)
+        elseif (character or 0) < characterMax then
+            index = CreateMacro(name, icon, body, true)
+        else
+            Say("Your macro list is full. Delete a macro in /macro first.", 1, 0.4, 0.4)
+            return
+        end
+        made = true
+    end
+    if not index or index == 0 then
+        Say("The game did not make the macro.", 1, 0.4, 0.4)
+        return
+    end
+    PickupMacro(index)
+    Say(string.format("Macro \"%s\" %s and is on your mouse: click an action bar slot to put it there.",
+        name, made and "made" or "updated"), C.accent[1], C.accent[2], C.accent[3])
+end
+
 local function CreateRow(index)
     local row = CreateFrame("Frame", nil, window)
     row:SetSize(WIDTH - 2 * PAD - BAR - 4, ROW_HEIGHT - 2)
@@ -207,6 +260,16 @@ local function CreateRow(index)
     end)
     row.up:SetPoint("RIGHT", row.down, "LEFT", -4, 0)
     Tooltip(row.up, "Earlier in the drawer")
+    row.macro = Flat(row, "Macro", 50, function()
+        local entry = row.entry
+        if entry and entry.frame then
+            MakeMacro("BD " .. DisplayName(entry.name), IconOf(entry.frame), "/click " .. entry.name)
+        end
+    end)
+    row.macro:SetPoint("RIGHT", -90, 0)
+    Tooltip(row.macro, "Make a macro",
+        "Makes a macro that clicks this button, and puts it on your mouse. Click an action bar slot to put it there; " ..
+        "pressing it then opens this addon's window like a click on its minimap button.")
     return row
 end
 
@@ -234,6 +297,7 @@ function ns.RefreshManage()
             row.note:SetText(entry.on and "" or "stays on the minimap")
             row.up:SetShown(entry.on)
             row.down:SetShown(entry.on)
+            row.macro:SetUsable(entry.frame ~= nil)
             row:Show()
         else
             row:Hide()
@@ -262,7 +326,7 @@ end
 local function CreateWindow()
     local listBottom = LIST_TOP + ROWS * ROW_HEIGHT
     window = CreateFrame("Frame", "ButtonDrawerManage", UIParent)
-    window:SetSize(WIDTH, listBottom + 118)
+    window:SetSize(WIDTH, listBottom + 232)
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:SetMovable(true)
@@ -361,6 +425,28 @@ local function CreateWindow()
     end)
     keepSwitch:SetPoint("LEFT", hoverSwitch, "RIGHT", 6, 0)
     Tooltip(keepSwitch, "Keep open", "Opened by mouse-over, the drawer stays open until its button is clicked.")
+
+    local macroTitle = Heading(window, "MACROS FOR YOUR ACTION BARS")
+    macroTitle:SetPoint("TOPLEFT", PAD, top - 90)
+    local macroHelp = Text(window, "Each addon above has a Macro button. These two open Button Drawer's own windows:",
+        "GameFontHighlightSmall", C.dim)
+    macroHelp:SetPoint("TOPLEFT", PAD, top - 112)
+    macroHelp:SetWidth(WIDTH - 2 * PAD)
+    macroHelp:SetJustifyH("LEFT")
+    local errorsMacro = Flat(window, "Lua errors macro", 130, function()
+        MakeMacro("BD Lua errors", 134400, "/bd errors")
+    end)
+    errorsMacro:SetPoint("TOPLEFT", PAD, top - 130)
+    Tooltip(errorsMacro, "Lua errors macro", "Makes a macro that opens the Lua error window, and puts it on your mouse.")
+    local setMacro = Flat(window, "Settings macro", 120, function()
+        MakeMacro("BD Settings", 134400, "/bd config")
+    end)
+    setMacro:SetPoint("LEFT", errorsMacro, "RIGHT", 6, 0)
+    Tooltip(setMacro, "Settings macro", "Makes a macro that opens this window, and puts it on your mouse.")
+    macroNote = Text(window, "", "GameFontHighlightSmall", C.text)
+    macroNote:SetPoint("TOPLEFT", PAD, top - 158)
+    macroNote:SetWidth(WIDTH - 2 * PAD)
+    macroNote:SetJustifyH("LEFT")
 
     window:SetScript("OnShow", ns.RefreshManage)
     window:Hide()       -- a new frame starts out shown; the toggle below opens it
