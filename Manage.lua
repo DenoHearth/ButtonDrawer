@@ -179,7 +179,19 @@ local MACRO_NAME_MAX = 16          -- the game cuts longer macro names
 -- Never the question mark (134400): the game reads that as "choose the icon from the macro
 -- text", finds nothing to show in "/click" or "/bd", and after a while draws a green square.
 local QUESTION_MARK = 134400
-local ICON_ADDON = "INV_Misc_EngGizmos_19"
+-- Addons whose minimap button is their own art (a macro can only show game icons): a game
+-- icon close to it. Matched on the button name, lower case.
+local KNOWN_ICONS = {
+    { "gearquest", "INV_Helmet_08" },
+    { "dungeonjournal", "INV_Misc_Book_09" },
+    { "goldwright", "INV_Misc_Coin_01" },
+}
+-- Every other addon with its own art gets one of these, no two the same while the list lasts.
+local ICON_POOL = {
+    "INV_Misc_EngGizmos_19", "INV_Scroll_04", "INV_Misc_Map02", "INV_Misc_Bag_08",
+    "INV_Misc_Spyglass_03", "INV_Misc_PocketWatch_01", "INV_Misc_Key_05", "INV_Misc_Toy_10",
+    "INV_Misc_Coin_02", "INV_Misc_Bone_Skull_02",
+}
 local ICON_ERRORS = "INV_Misc_Note_02"
 local ICON_SETTINGS = "INV_Misc_Wrench_01"
 
@@ -192,6 +204,60 @@ local function MacroIcon(icon, fallback)
         if short and string.lower(short) ~= "inv_misc_questionmark" then return short end
     end
     return fallback
+end
+
+-- The icon a "/click" macro gets when its button has no game icon of its own.
+local function KnownIcon(target)
+    local lower = string.lower(target)
+    for _, pair in ipairs(KNOWN_ICONS) do
+        if string.find(lower, pair[1], 1, true) then return pair[2] end
+    end
+end
+
+-- Button names of every "/click" macro of ours (plus extra, the one being made now).
+local function ClickTargets(extra)
+    local targets, seen = {}, {}
+    local function add(target)
+        if target and not seen[target] then seen[target] = true; targets[#targets + 1] = target end
+    end
+    add(extra)
+    local account, character = GetNumMacros()
+    local consts = Constants and Constants.MacroConsts
+    local accountMax = consts and consts.MAX_ACCOUNT_MACROS or 120
+    for i = 1, (account or 0) + (character or 0) do
+        local index = i <= (account or 0) and i or accountMax + i - (account or 0)
+        local name, _, body = GetMacroInfo(index)
+        if name and body and string.sub(name, 1, 3) == "BD " then
+            add(string.match(body, "^/click ([%w_]+)%s*$"))
+        end
+    end
+    return targets
+end
+
+-- One icon per "/click" macro: the button's own game icon, else a known one, else the first
+-- pool icon nobody else has. Names in sorted order, so the same macros always get the same icons.
+local function PlanIcons(extra)
+    local targets = ClickTargets(extra)
+    table.sort(targets)
+    local plan, used, rest = {}, {}, {}
+    for _, target in ipairs(targets) do
+        local icon = MacroIcon(IconOf(_G[target]), nil) or KnownIcon(target)
+        if icon then
+            plan[target] = icon
+            used[string.lower(tostring(icon))] = true
+        else
+            rest[#rest + 1] = target
+        end
+    end
+    for _, target in ipairs(rest) do
+        local pick = ICON_POOL[1]
+        for _, icon in ipairs(ICON_POOL) do
+            if not used[string.lower(icon)] then pick = icon; break end
+        end
+        plan[target] = pick
+        used[string.lower(pick)] = true
+    end
+    return plan
 end
 
 local function Say(text, r, g, b)
@@ -237,13 +303,15 @@ local function MakeMacro(name, icon, body)
         name, made and "made" or "updated"), C.accent[1], C.accent[2], C.accent[3])
 end
 
--- Macros made by 1.3.x carry the question mark and turn green. Give every "BD ..." macro of
+-- Macros made by 1.3.0/1.3.1 carry the question mark and turn green; 1.3.2 gave every addon
+-- with its own art the same gizmo. Give every "BD ..." macro of
 -- ours a fixed icon again; called once after login, out of combat.
 function ns.RepairMacros()
     if InCombatLockdown() or not GetNumMacros then return end
     local account, character = GetNumMacros()
     local consts = Constants and Constants.MacroConsts
     local accountMax = consts and consts.MAX_ACCOUNT_MACROS or 120
+    local plan = PlanIcons(nil)
     local indexes = {}
     for i = 1, account or 0 do indexes[#indexes + 1] = i end
     for i = 1, character or 0 do indexes[#indexes + 1] = accountMax + i end
@@ -253,7 +321,7 @@ function ns.RepairMacros()
             local icon
             local target = string.match(body, "^/click ([%w_]+)%s*$")
             if target then
-                icon = MacroIcon(IconOf(_G[target]), ICON_ADDON)
+                icon = plan[target]
             elseif string.match(body, "^/bd errors%s*$") then
                 icon = ICON_ERRORS
             elseif string.match(body, "^/bd config%s*$") then
@@ -305,7 +373,8 @@ local function CreateRow(index)
     row.macro = Flat(row, "Macro", 50, function()
         local entry = row.entry
         if entry and entry.frame then
-            MakeMacro("BD " .. DisplayName(entry.name), MacroIcon(IconOf(entry.frame), ICON_ADDON), "/click " .. entry.name)
+            MakeMacro("BD " .. DisplayName(entry.name), PlanIcons(entry.name)[entry.name], "/click " .. entry.name)
+            ns.RepairMacros()   -- a new name can move a pool icon; keep all of them apart
         end
     end)
     row.macro:SetPoint("RIGHT", -90, 0)

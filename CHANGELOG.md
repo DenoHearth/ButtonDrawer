@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.3 — 2026-11-22
+
+- Macros for addons with their own minimap art no longer all share the gizmo icon. GearQuest gets a helmet, ForeverDungeonJournal a book, Goldwright a coin; any other such addon gets its own icon from a list of ten, no two the same
+- Existing macros get their new icons by themselves at login, and again each time you press a Macro button
+
 ## v1.3.2 — 2026-11-22
 
 - Macros no longer turn into a green square after a while. They were made with the question mark icon, which the game treats as "pick the icon from the macro text"; `/click` and `/bd` give it nothing to pick. Each macro now gets a fixed icon: the addon's own icon when it is a game icon, otherwise a gizmo; a note for the Lua errors macro, a wrench for the Settings macro
