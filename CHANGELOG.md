@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.4 — 2026-11-22
+
+- On your action bars, each addon macro now shows the same picture as that addon's button in the drawer, its author's own art. A macro itself can only hold a game icon (that one still shows in the /macro window); Button Drawer paints the addon's picture over it on Blizzard's action bars
+
 ## v1.3.3 — 2026-11-22
 
 - Macros for addons with their own minimap art no longer all share the gizmo icon. GearQuest gets a helmet, ForeverDungeonJournal a book, Goldwright a coin; any other such addon gets its own icon from a list of ten, no two the same

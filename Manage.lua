@@ -375,6 +375,7 @@ local function CreateRow(index)
         if entry and entry.frame then
             MakeMacro("BD " .. DisplayName(entry.name), PlanIcons(entry.name)[entry.name], "/click " .. entry.name)
             ns.RepairMacros()   -- a new name can move a pool icon; keep all of them apart
+            ns.PaintActionButtons()
         end
     end)
     row.macro:SetPoint("RIGHT", -90, 0)
@@ -570,5 +571,53 @@ function ns.ToggleManage()
     else
         window:Show()
         ns.RefreshManage()
+    end
+end
+
+
+-- ------------------------------------------------------------------ action bar art
+-- A macro can only carry a game icon, but many addons draw their minimap button with their own
+-- picture. On the action bars a "BD ..." macro shows that picture anyway: each time the game
+-- sets an action button's icon, a "/click" macro of ours gets its button's own art painted over.
+
+local BAR_PREFIXES = {
+    "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarLeftButton",
+    "MultiBarRightButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
+}
+local painting = false
+
+-- The addon's own picture for the macro on this action slot, or nil.
+local function ArtForAction(action)
+    if not action then return nil end
+    local kind, id = GetActionInfo(action)
+    if kind ~= "macro" or not id then return nil end
+    local name, _, body = GetMacroInfo(id)
+    if not name or not body or string.sub(name, 1, 3) ~= "BD " then return nil end
+    local target = string.match(body, "^/click ([%w_]+)%s*$")
+    return target and IconOf(_G[target])
+end
+
+local function PaintAction(button)
+    if painting or not button.icon then return end
+    local art = ArtForAction(button.action)
+    if art then
+        painting = true
+        button.icon:SetTexture(art)
+        painting = false
+    end
+end
+
+function ns.PaintActionButtons()
+    for _, prefix in ipairs(BAR_PREFIXES) do
+        for i = 1, 12 do
+            local button = _G[prefix .. i]
+            if button and button.icon then
+                if not button.bdHooked then
+                    button.bdHooked = true
+                    hooksecurefunc(button.icon, "SetTexture", function() PaintAction(button) end)
+                end
+                PaintAction(button)
+            end
+        end
     end
 end
