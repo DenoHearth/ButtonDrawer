@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.2 — 2026-11-22
+
+- Macros no longer turn into a green square after a while. They were made with the question mark icon, which the game treats as "pick the icon from the macro text"; `/click` and `/bd` give it nothing to pick. Each macro now gets a fixed icon: the addon's own icon when it is a game icon, otherwise a gizmo; a note for the Lua errors macro, a wrench for the Settings macro
+- Macros made by 1.3.0/1.3.1 are fixed by themselves 12 seconds after login; nothing to redo on your bars
+
 ## v1.3.1 — 2026-11-20
 
 - Set window: the "stays on the minimap" note no longer runs into the Macro button

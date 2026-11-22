@@ -524,6 +524,8 @@ frame:SetScript("OnEvent", function(_, event, name)
         build()
         -- addons create their buttons at different moments during login
         for _, delay in ipairs({ 1, 4, 10 }) do C_Timer.After(delay, scan) end
+        -- after the last scan, so every addon button a "/click" macro names exists
+        C_Timer.After(12, function() if ns.RepairMacros then ns.RepairMacros() end end)
     end
 end)
 

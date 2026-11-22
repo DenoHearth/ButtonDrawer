@@ -176,7 +176,23 @@ end
 -- cursor; one click on an action bar slot puts it there.
 
 local MACRO_NAME_MAX = 16          -- the game cuts longer macro names
-local QUESTION_MARK = 134400       -- INV_Misc_QuestionMark
+-- Never the question mark (134400): the game reads that as "choose the icon from the macro
+-- text", finds nothing to show in "/click" or "/bd", and after a while draws a green square.
+local QUESTION_MARK = 134400
+local ICON_ADDON = "INV_Misc_EngGizmos_19"
+local ICON_ERRORS = "INV_Misc_Note_02"
+local ICON_SETTINGS = "INV_Misc_Wrench_01"
+
+-- A macro icon from a button's picture: a file id as it is, an Interface\Icons path as its
+-- icon name; any other picture (addon art outside the icon folder) gets the fallback.
+local function MacroIcon(icon, fallback)
+    if type(icon) == "number" and icon > 0 and icon ~= QUESTION_MARK then return icon end
+    if type(icon) == "string" then
+        local short = string.match(string.lower(icon), "^interface[\\/]+icons[\\/]+([%w_]+)")
+        if short and string.lower(short) ~= "inv_misc_questionmark" then return short end
+    end
+    return fallback
+end
 
 local function Say(text, r, g, b)
     if macroNote then
@@ -186,14 +202,13 @@ local function Say(text, r, g, b)
     print("|cff84ccffButton Drawer:|r " .. text)
 end
 
--- name: macro name; icon: a file id or nil; body: the macro text.
+-- name: macro name; icon: a file id or icon name (already through MacroIcon); body: the macro text.
 local function MakeMacro(name, icon, body)
     if InCombatLockdown() then
         Say("Macros cannot be made in combat. Try again after the fight.", 1, 0.4, 0.4)
         return
     end
     name = string.sub(name, 1, MACRO_NAME_MAX)
-    if type(icon) ~= "number" then icon = QUESTION_MARK end
     local index = GetMacroIndexByName(name)
     local made
     if index and index > 0 then
@@ -220,6 +235,33 @@ local function MakeMacro(name, icon, body)
     PickupMacro(index)
     Say(string.format("Macro \"%s\" %s and is on your mouse: click an action bar slot to put it there.",
         name, made and "made" or "updated"), C.accent[1], C.accent[2], C.accent[3])
+end
+
+-- Macros made by 1.3.x carry the question mark and turn green. Give every "BD ..." macro of
+-- ours a fixed icon again; called once after login, out of combat.
+function ns.RepairMacros()
+    if InCombatLockdown() or not GetNumMacros then return end
+    local account, character = GetNumMacros()
+    local consts = Constants and Constants.MacroConsts
+    local accountMax = consts and consts.MAX_ACCOUNT_MACROS or 120
+    local indexes = {}
+    for i = 1, account or 0 do indexes[#indexes + 1] = i end
+    for i = 1, character or 0 do indexes[#indexes + 1] = accountMax + i end
+    for _, index in ipairs(indexes) do
+        local name, _, body = GetMacroInfo(index)
+        if name and body and string.sub(name, 1, 3) == "BD " then
+            local icon
+            local target = string.match(body, "^/click ([%w_]+)%s*$")
+            if target then
+                icon = MacroIcon(IconOf(_G[target]), ICON_ADDON)
+            elseif string.match(body, "^/bd errors%s*$") then
+                icon = ICON_ERRORS
+            elseif string.match(body, "^/bd config%s*$") then
+                icon = ICON_SETTINGS
+            end
+            if icon then EditMacro(index, name, icon, body) end
+        end
+    end
 end
 
 local function CreateRow(index)
@@ -263,7 +305,7 @@ local function CreateRow(index)
     row.macro = Flat(row, "Macro", 50, function()
         local entry = row.entry
         if entry and entry.frame then
-            MakeMacro("BD " .. DisplayName(entry.name), IconOf(entry.frame), "/click " .. entry.name)
+            MakeMacro("BD " .. DisplayName(entry.name), MacroIcon(IconOf(entry.frame), ICON_ADDON), "/click " .. entry.name)
         end
     end)
     row.macro:SetPoint("RIGHT", -90, 0)
@@ -434,12 +476,12 @@ local function CreateWindow()
     macroHelp:SetWidth(WIDTH - 2 * PAD)
     macroHelp:SetJustifyH("LEFT")
     local errorsMacro = Flat(window, "Lua errors macro", 130, function()
-        MakeMacro("BD Lua errors", 134400, "/bd errors")
+        MakeMacro("BD Lua errors", ICON_ERRORS, "/bd errors")
     end)
     errorsMacro:SetPoint("TOPLEFT", PAD, top - 130)
     Tooltip(errorsMacro, "Lua errors macro", "Makes a macro that opens the Lua error window, and puts it on your mouse.")
     local setMacro = Flat(window, "Settings macro", 120, function()
-        MakeMacro("BD Settings", 134400, "/bd config")
+        MakeMacro("BD Settings", ICON_SETTINGS, "/bd config")
     end)
     setMacro:SetPoint("LEFT", errorsMacro, "RIGHT", 6, 0)
     Tooltip(setMacro, "Settings macro", "Makes a macro that opens this window, and puts it on your mouse.")
